@@ -126,7 +126,7 @@ namespace ns_log
     class Formatter
     {
     public:
-        Formatter(const std::string &pattern) : _pattern(pattern) { assert(parsePattern()); }
+        Formatter(const std::string &pattern = "[%d{%Y-%m-%d %H:%M:%S}][%p][%t][%c][%f:%l]%T%m%n") : _pattern(pattern) { assert(parsePattern()); }
         std::string format(const Message &msg)
         {
             std::stringstream ss;
@@ -145,7 +145,63 @@ namespace ns_log
             }
             return;
         }
-        bool parsePattern();
+
+    private:
+        bool parsePattern()
+        {
+            size_t pos = 0;
+            std::string key, val;
+            std::vector<std::pair<std::string, std::string>> fmt_order;
+            while (pos < _pattern.size())
+            {
+                if (_pattern[pos] != '%')
+                {
+                    val += _pattern[pos++];
+                    continue;
+                }
+                if (pos + 1 < _pattern.size() && _pattern[pos + 1] == '%')
+                {
+                    val += _pattern[pos];
+                    pos += 2;
+                    continue;
+                }
+                if (!val.empty())
+                {
+                    fmt_order.push_back(std::make_pair("", val));
+                    val.clear();
+                }
+                pos += 1;
+                if (pos >= _pattern.size())
+                {
+                    std::cerr << "%之后，没有对应的格式化字符!\n";
+                    return false;
+                }
+                key = _pattern[pos];
+                pos += 1;
+                if (pos < _pattern.size() && _pattern[pos] == '{')
+                {
+                    pos += 1;
+                    while (pos < _pattern.size() && _pattern[pos] != '}')
+                    {
+                        val += _pattern[pos++];
+                    }
+                    pos += 1;
+                    if (pos >= _pattern.size())
+                    {
+                        std::cerr << "子规则{}匹配错误!\n";
+                        return false;
+                    }
+                }
+                fmt_order.push_back(std::make_pair(key, val));
+                key.clear();
+                val.clear();
+            }
+            for (auto &it : fmt_order)
+            {
+                _items.push_back(createItem(it.first, it.second));
+            }
+            return true;
+        }
 
     private:
         FormatItem::ptr createItem(const std::string &key, const std::string &value)
@@ -168,7 +224,11 @@ namespace ns_log
                 return std::make_shared<MsgFormatItem>();
             if (key == "n")
                 return std::make_shared<NLineFormatItem>();
-            return std::make_shared<OtherFormatItem>(value);
+            if (key == "")
+                return std::make_shared<OtherFormatItem>(value);
+            std::cerr << "没有对应的格式化字符:%" << key << std::endl;
+            abort();
+            return FormatItem::ptr();
         }
 
     private:

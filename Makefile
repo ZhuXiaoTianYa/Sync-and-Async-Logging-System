@@ -1,3 +1,4 @@
+.PHONY:test
 test:test.cc util.hpp
 	g++ -std=c++11 $^ -o $@
 
