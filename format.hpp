@@ -126,6 +126,7 @@ namespace ns_log
     class Formatter
     {
     public:
+        using ptr = std::shared_ptr<Formatter>;
         Formatter(const std::string &pattern = "[%d{%Y-%m-%d %H:%M:%S}][%p][%t][%c][%f:%l]%T%m%n") : _pattern(pattern) { assert(parsePattern()); }
         std::string format(const Message &msg)
         {
