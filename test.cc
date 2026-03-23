@@ -6,6 +6,16 @@
 #include "logger.hpp"
 #include "buffer.hpp"
 
+void test_log()
+{
+    ns_log::Logger::ptr logger = ns_log::LoggerManager::getInstance().getLogger("Async_logger");
+    int count = 0;
+    while (count < 50000)
+    {
+        logger->debug(__FILE__, __LINE__, "%s-%d", "测试日志-", count++);
+    }
+}
+
 int main()
 {
     // std::cout << ns_log::ns_util::Date::now() << std::endl;
@@ -142,22 +152,17 @@ int main()
 
     std::string logger_name = "Async_logger";
     std::string pattern = "[%d{%H:%M:%S}][%p][%c][%f:%l]%T%m%n";
-    std::unique_ptr<ns_log::LoggerBuilder> builder(new ns_log::LocalLoggerBuilder());
+    std::unique_ptr<ns_log::LoggerBuilder> builder(new ns_log::GlobalLoggerBuilder());
     builder->buildFormatter(pattern);
     builder->buildLoggerLevel(ns_log::LogLevel::value::DEBUG);
     builder->buildLoggerName(logger_name);
-    builder->buildEnableUnSafeAsync();
+    // builder->buildEnableUnSafeAsync();
     builder->buildLoggerType(ns_log::LoggerType::LOGGER_ASYNC);
     builder->buildSink<ns_log::StdoutSink>();
     builder->buildSink<ns_log::FileSink>("./logfile/file/test.log");
     builder->buildSink<ns_log::RollBySizeSink>("./logfile/roll_size/roll-", 1024 * 1024);
     builder->buildSink<ns_log::RollByTimeSink>("./logfile/roll_time/roll-", ns_log::TimeGap::GAP_SECOND, 1);
     ns_log::Logger::ptr logger = builder->build();
-    int count = 0;
-    while (count < 50000)
-    {
-        logger->debug(__FILE__, __LINE__, "%s-%d", "测试日志-", count++);
-    }
-
+    test_log();
     return 0;
 }

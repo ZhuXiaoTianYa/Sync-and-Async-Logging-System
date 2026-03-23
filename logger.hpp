@@ -9,6 +9,7 @@
 #include <mutex>
 #include <atomic>
 #include <cstdarg>
+#include <unordered_map>
 
 namespace ns_log
 {
@@ -20,6 +21,11 @@ namespace ns_log
         Logger(const std::string &logger_name, const LogLevel::value &level, Formatter::ptr &formatter, const std::vector<SinkLog::ptr> &sinks)
             : _logger_name(logger_name), _level(level), _formatter(formatter), _sinks(sinks.begin(), sinks.end())
         {
+        }
+
+        const std::string &getName()
+        {
+            return _logger_name;
         }
 
         virtual void debug(const std::string &file, const size_t &line, const std::string &fmt, ...)
@@ -225,9 +231,95 @@ namespace ns_log
             }
             if (_logger_type == LoggerType::LOGGER_ASYNC)
             {
-                std::make_shared<AsyncLogger>(_logger_name, _limit_level, _formatter, _sinks, _looper_type);
+                return std::make_shared<AsyncLogger>(_logger_name, _limit_level, _formatter, _sinks, _looper_type);
             }
             return std::make_shared<SyncLogger>(_logger_name, _limit_level, _formatter, _sinks);
+        }
+    };
+
+    class LoggerManager
+    {
+    public:
+        static LoggerManager &getInstance()
+        {
+            // C++11之后，针对静态局部变量，编译器在编译的层面实现了线程安全
+            // 当静态局部变量在没有构造完成之前，其他的线程就会进入阻塞
+            static LoggerManager eton;
+            return eton;
+        }
+        void addLogger(Logger::ptr &logger)
+        {
+            if (hasLogger(logger->getName()) == true)
+                return;
+            std::unique_lock<std::mutex> lock(_mutex);
+            _loggers.insert(std::make_pair(logger->getName(), logger));
+        }
+        bool hasLogger(const std::string &name)
+        {
+            std::unique_lock<std::mutex> lock(_mutex);
+            auto it = _loggers.find(name);
+            if (it == _loggers.end())
+            {
+                return false;
+            }
+            return true;
+        }
+        Logger::ptr getLogger(const std::string &name)
+        {
+            std::unique_lock<std::mutex> lock(_mutex);
+            auto it = _loggers.find(name);
+            if (it == _loggers.end())
+            {
+                return Logger::ptr();
+            }
+            return it->second;
+        }
+        Logger::ptr rootLogger()
+        {
+            return _root_logger;
+        }
+
+    private:
+        LoggerManager()
+        {
+            std::unique_ptr<LocalLoggerBuilder> build(new LocalLoggerBuilder());
+            build->buildLoggerName("root");
+            _root_logger = build->build(); // 这里不能用全局建造者建造，不然会造成循环构造，阻塞在这
+            _loggers.insert(std::make_pair(_root_logger->getName(), _root_logger));
+            // 加锁？
+        }
+
+    private:
+        Logger::ptr _root_logger;
+        std::unordered_map<std::string, Logger::ptr> _loggers;
+        std::mutex _mutex;
+    };
+
+    class GlobalLoggerBuilder : public LoggerBuilder
+    {
+    public:
+        Logger::ptr build() override
+        {
+            assert(!_logger_name.empty());
+            if (_formatter == nullptr)
+            {
+                _formatter = std::make_shared<Formatter>();
+            }
+            if (_sinks.empty())
+            {
+                buildSink<StdoutSink>();
+            }
+            Logger::ptr logger;
+            if (_logger_type == LoggerType::LOGGER_ASYNC)
+            {
+                logger = std::make_shared<AsyncLogger>(_logger_name, _limit_level, _formatter, _sinks, _looper_type);
+            }
+            else
+            {
+                logger = std::make_shared<SyncLogger>(_logger_name, _limit_level, _formatter, _sinks);
+            }
+            LoggerManager::getInstance().addLogger(logger);
+            return logger;
         }
     };
 }
