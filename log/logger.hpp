@@ -192,7 +192,7 @@ namespace ns_log
     class LoggerBuilder
     {
     public:
-        LoggerBuilder() : _logger_type(LoggerType::LOGGER_ASYNC), _limit_level(LogLevel::value::DEBUG), _looper_type(AsyncType::ASYNC_SAFE) {}
+        LoggerBuilder() : _logger_type(LoggerType::LOGGER_SYNC), _limit_level(LogLevel::value::DEBUG), _looper_type(AsyncType::ASYNC_SAFE) {}
         void buildLoggerLevel(const LogLevel::value &level) { _limit_level = level; }
         void buildLoggerName(const std::string &logger_name) { _logger_name = logger_name; }
         void buildEnableUnSafeAsync() { _looper_type = AsyncType::ASYNC_UNSAFE; }
@@ -282,7 +282,7 @@ namespace ns_log
     private:
         LoggerManager()
         {
-            std::unique_ptr<LocalLoggerBuilder> build(new LocalLoggerBuilder());
+            std::unique_ptr<LoggerBuilder> build(new LocalLoggerBuilder());
             build->buildLoggerName("root");
             _root_logger = build->build(); // 这里不能用全局建造者建造，不然会造成循环构造，阻塞在这
             _loggers.insert(std::make_pair(_root_logger->getName(), _root_logger));

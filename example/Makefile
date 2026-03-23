@@ -1,5 +1,5 @@
 .PHONY:test
-test:test.cc util.hpp
+test:test.cc
 	g++ -std=c++11 $^ -o $@
 
 .PHONY:clean
