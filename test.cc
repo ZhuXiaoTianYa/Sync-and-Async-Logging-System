@@ -1,18 +1,28 @@
-#include "util.hpp"
-#include "level.hpp"
-#include "message.hpp"
-#include "format.hpp"
-#include "sink.hpp"
-#include "logger.hpp"
-#include "buffer.hpp"
+#include "log.hpp"
 
 void test_log()
 {
-    ns_log::Logger::ptr logger = ns_log::LoggerManager::getInstance().getLogger("Async_logger");
+    // ns_log::Logger::ptr logger = ns_log::LoggerManager::getInstance().getLogger("Async_logger");
+    // logger->debug("%s", "测试日志-");
+    // logger->info("%s", "测试日志-");
+    // logger->warn("%s", "测试日志-");
+    // logger->error("%s", "测试日志-");
+    // logger->fatal("%s", "测试日志-");
+    // int count = 0;
+    // while (count < 50000)
+    // {
+    //     logger->debug("%s-%d", "测试日志-", count++);
+    // }
+
+    DEBUG("%s", "测试日志-");
+    INFO("%s", "测试日志-");
+    WARN("%s", "测试日志-");
+    ERROR("%s", "测试日志-");
+    FATAL("%s", "测试日志-");
     int count = 0;
     while (count < 50000)
     {
-        logger->debug(__FILE__, __LINE__, "%s-%d", "测试日志-", count++);
+        FATAL("%s-%d", "测试日志-", count++);
     }
 }
 
