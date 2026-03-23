@@ -5,6 +5,7 @@
 #include "message.hpp"
 #include "level.hpp"
 #include "sink.hpp"
+#include "looper.hpp"
 #include <mutex>
 #include <atomic>
 #include <cstdarg>
@@ -154,6 +155,28 @@ namespace ns_log
         }
     };
 
+    class AsyncLogger : public Logger
+    {
+    public:
+        AsyncLogger(const std::string &logger_name, const LogLevel::value &level, Formatter::ptr &formatter, const std::vector<SinkLog::ptr> &sinks, const AsyncType &loop_type) : Logger(logger_name, level, formatter, sinks), _looper(std::make_shared<AsyncLooper>(std::bind(&AsyncLogger::realLog, this, std::placeholders::_1), loop_type)) {}
+        void log(const char *data, const size_t &len)
+        {
+            _looper->push(data, len);
+        }
+        void realLog(Buffer &buf)
+        {
+            if (_sinks.empty())
+                return;
+            for (auto &sink : _sinks)
+            {
+                sink->log(buf.readBegin(), buf.readAbleSize());
+            }
+        }
+
+    private:
+        AsyncLooper::ptr _looper;
+    };
+
     enum class LoggerType
     {
         LOGGER_SYNC,
@@ -163,9 +186,10 @@ namespace ns_log
     class LoggerBuilder
     {
     public:
-        LoggerBuilder() : _logger_type(LoggerType::LOGGER_ASYNC), _limit_level(LogLevel::value::DEBUG) {}
+        LoggerBuilder() : _logger_type(LoggerType::LOGGER_ASYNC), _limit_level(LogLevel::value::DEBUG), _looper_type(AsyncType::ASYNC_SAFE) {}
         void buildLoggerLevel(const LogLevel::value &level) { _limit_level = level; }
         void buildLoggerName(const std::string &logger_name) { _logger_name = logger_name; }
+        void buildEnableUnSafeAsync() { _looper_type = AsyncType::ASYNC_UNSAFE; }
         void buildFormatter(const std::string &pattern) { _formatter = std::make_shared<Formatter>(pattern); }
         void buildLoggerType(const LoggerType &logger_type) { _logger_type = logger_type; }
         template <typename SinkType, typename... Args>
@@ -177,6 +201,7 @@ namespace ns_log
         virtual Logger::ptr build() = 0;
 
     protected:
+        AsyncType _looper_type;
         LoggerType _logger_type;
         Formatter::ptr _formatter;
         std::vector<SinkLog::ptr> _sinks;
@@ -200,6 +225,7 @@ namespace ns_log
             }
             if (_logger_type == LoggerType::LOGGER_ASYNC)
             {
+                std::make_shared<AsyncLogger>(_logger_name, _limit_level, _formatter, _sinks, _looper_type);
             }
             return std::make_shared<SyncLogger>(_logger_name, _limit_level, _formatter, _sinks);
         }

@@ -13,14 +13,14 @@ namespace ns_log
     {
     public:
         Buffer() : _buffer(DEFAULT_BUFFER_SIZE), _reader_idx(0), _writer_idx(0) {}
-        bool push(const char *data, const size_t &len)
+        void push(const char *data, const size_t &len)
         {
             // if (len > writeAbleSize())
             //     return false;
             ensureEnoughSize(len);
             std::copy(data, data + len, &_buffer[_writer_idx]);
             moveWriter(len);
-            return true;
+            return;
         }
         const char *readBegin()
         {

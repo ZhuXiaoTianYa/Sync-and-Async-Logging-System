@@ -94,50 +94,70 @@ int main()
     //     cursize += 30;
     // }
 
-    std::ifstream ifs;
-    ifs.open("logfile/stdout/test.log", std::ios::binary);
-    if (!ifs.is_open())
-    {
-        std::cerr << "open ifile failed\n";
-        return -1;
-    }
-    ifs.seekg(0, std::ios::end);
-    size_t len = ifs.tellg();
-    ifs.seekg(0, std::ios::beg);
-    std::string str;
-    str.resize(len);
-    ifs.read(&str[0], len);
-    if (!ifs.good())
-    {
-        std::cerr << "read file failed\n";
-        return -1;
-    }
-    ifs.close();
+    // std::ifstream ifs;
+    // ifs.open("logfile/stdout/test.log", std::ios::binary);
+    // if (!ifs.is_open())
+    // {
+    //     std::cerr << "open ifile failed\n";
+    //     return -1;
+    // }
+    // ifs.seekg(0, std::ios::end);
+    // size_t len = ifs.tellg();
+    // ifs.seekg(0, std::ios::beg);
+    // std::string str;
+    // str.resize(len);
+    // ifs.read(&str[0], len);
+    // if (!ifs.good())
+    // {
+    //     std::cerr << "read file failed\n";
+    //     return -1;
+    // }
+    // ifs.close();
 
-    std::ofstream ofs;
-    ofs.open("logfile/tmp.log", std::ios::binary);
-    if (!ofs.is_open())
+    // std::ofstream ofs;
+    // ofs.open("logfile/tmp.log", std::ios::binary);
+    // if (!ofs.is_open())
+    // {
+    //     std::cerr << "open ofile failed\n";
+    //     return -1;
+    // }
+    // ns_log::Buffer buffer;
+    // for (int i = 0; i < str.size(); i++)
+    // {
+    //     buffer.push(&str[i], 1);
+    // }
+    // std::cout << "push end\n";
+    // for (int n = 0; n < str.size(); n++)
+    // {
+    //     ofs.write(buffer.readBegin(), 1);
+    //     if (!ofs.good())
+    //     {
+    //         std::cerr << "write file failed\n";
+    //         return -1;
+    //     }
+    //     buffer.moveReader(1);
+    // }
+    // std::cout << "read end\n";
+    // ofs.close();
+
+    std::string logger_name = "Async_logger";
+    std::string pattern = "[%d{%H:%M:%S}][%p][%c][%f:%l]%T%m%n";
+    std::unique_ptr<ns_log::LoggerBuilder> builder(new ns_log::LocalLoggerBuilder());
+    builder->buildFormatter(pattern);
+    builder->buildLoggerLevel(ns_log::LogLevel::value::DEBUG);
+    builder->buildLoggerName(logger_name);
+    builder->buildEnableUnSafeAsync();
+    builder->buildLoggerType(ns_log::LoggerType::LOGGER_ASYNC);
+    builder->buildSink<ns_log::StdoutSink>();
+    builder->buildSink<ns_log::FileSink>("./logfile/file/test.log");
+    builder->buildSink<ns_log::RollBySizeSink>("./logfile/roll_size/roll-", 1024 * 1024);
+    builder->buildSink<ns_log::RollByTimeSink>("./logfile/roll_time/roll-", ns_log::TimeGap::GAP_SECOND, 1);
+    ns_log::Logger::ptr logger = builder->build();
+    int count = 0;
+    while (count < 50000)
     {
-        std::cerr << "open ofile failed\n";
-        return -1;
+        logger->debug(__FILE__, __LINE__, "%s-%d", "测试日志-", count++);
     }
-    ns_log::Buffer buffer;
-    for (int i = 0; i < str.size(); i++)
-    {
-        buffer.push(&str[i], 1);
-    }
-    std::cout << "push end\n";
-    for (int n = 0; n < str.size(); n++)
-    {
-        ofs.write(buffer.readBegin(), 1);
-        if (!ofs.good())
-        {
-            std::cerr << "write file failed\n";
-            return -1;
-        }
-        buffer.moveReader(1);
-    }
-    std::cout << "read end\n";
-    ofs.close();
+
     return 0;
 }
